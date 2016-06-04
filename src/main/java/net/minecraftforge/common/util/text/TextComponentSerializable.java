@@ -1,4 +1,4 @@
-package net.minecraftforge.common.util;
+package net.minecraftforge.common.util.text;
 
 import net.minecraft.util.IJsonSerializable;
 import net.minecraft.util.text.TextComponentBase;
