@@ -19,15 +19,14 @@
 
 package net.minecraftforge.userdev;
 
-import com.google.common.collect.Maps;
 import com.google.common.collect.Sets;
 import net.minecraftforge.fml.loading.moddiscovery.IModLocator;
 import net.minecraftforge.fml.loading.moddiscovery.ModFile;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
-import java.io.File;
 import java.io.IOException;
+import java.net.URI;
 import java.net.URISyntaxException;
 import java.net.URL;
 import java.nio.file.*;
@@ -44,7 +43,6 @@ public class ClasspathLocator implements IModLocator
     private static final Logger LOGGER = LogManager.getLogger();
     private static final String COREMODS = "META-INF/coremods.json";
     private static final String MODS = "META-INF/mods.toml";
-    private Map<Path, List<Path>> paths = Maps.newHashMap();
 
     public ClasspathLocator() {}
 
