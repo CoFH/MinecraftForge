@@ -48,6 +48,24 @@ public class ClasspathLocator implements IModLocator
 
     public ClasspathLocator() {}
 
+    private Path urlToPath(URL url) throws URISyntaxException
+    {
+        if (url.getProtocol().equals("jar"))
+        {
+            String text = url.toString();
+            int i = text.indexOf("!/");
+            String jarFile = text.substring(0, i);
+            String fileInJar = text.substring(i+1);
+
+            FileSystem jar = FileSystems.getFileSystem(new URI(jarFile));
+            return jar.getPath(fileInJar);
+        }
+        else
+        {
+            return Paths.get(url.toURI());
+        }
+    }
+
     @Override
     public List<ModFile> scanMods() {
         Set<URL> modUrls = Sets.newHashSet();
@@ -67,8 +85,8 @@ public class ClasspathLocator implements IModLocator
         return modUrls.stream().map((url) -> {
             try
             {
-                // We got URLs including "META-INF/<something", so get two components up.
-                return new File(url.toURI()).toPath().getParent().getParent();
+                // We got URLs including "META-INF/<something>", so get two components up.
+                return urlToPath(url).getParent().getParent();
             }
             catch (URISyntaxException e)
             {
