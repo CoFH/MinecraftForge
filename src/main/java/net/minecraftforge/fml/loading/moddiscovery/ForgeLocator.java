@@ -234,8 +234,9 @@ public class ForgeLocator implements IModLocator
             try
             {
                 URI uri = new URI("jar:" + root.toUri().toString());
-                try (FileSystem jar = FileSystems.newFileSystem(uri, Collections.emptyMap()))
+                try
                 {
+                    FileSystem jar = FileSystems.newFileSystem(uri, Collections.emptyMap());
                     return jar.getPath(first, tail);
                 }
                 catch(FileSystemAlreadyExistsException e)

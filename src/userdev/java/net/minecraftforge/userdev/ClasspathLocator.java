@@ -57,13 +57,23 @@ public class ClasspathLocator implements IModLocator
                 String jarFile = text.substring(0, i);
                 String fileInJar = text.substring(i + 1);
 
-                try (FileSystem jar = FileSystems.getFileSystem(new URI(jarFile)))
+                URI uri = new URI(jarFile);
+                try
                 {
+                    FileSystem jar = FileSystems.newFileSystem(uri, Collections.emptyMap());
                     return jar.getPath(fileInJar);
                 }
-                catch (IOException e)
+                catch(FileSystemAlreadyExistsException e)
                 {
-                    throw new RuntimeException(e);
+                    try
+                    {
+                        FileSystem jar = FileSystems.getFileSystem(uri);
+                        return jar.getPath(fileInJar);
+                    }
+                    catch (FileSystemNotFoundException e2)
+                    {
+                        throw new RuntimeException(e);
+                    }
                 }
             }
             else
@@ -71,7 +81,7 @@ public class ClasspathLocator implements IModLocator
                 return Paths.get(url.toURI());
             }
         }
-        catch (URISyntaxException e)
+        catch (URISyntaxException | IOException e)
         {
             throw new RuntimeException(e);
         }
