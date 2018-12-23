@@ -30,6 +30,7 @@ import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
 import java.io.File;
+import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.net.URI;
 import java.net.URISyntaxException;
@@ -77,81 +78,113 @@ public class ForgeLocator implements IModLocator
 
     public ForgeLocator() { }
 
+    private File findLibsLocation(ClassLoader loader)
+    {
+        try
+        {
+            List<URL> urls = Collections.list(loader.getResources(LIB_RESOURCE));
+            if (urls.size() == 0)
+                throw new IllegalStateException("Could not locate \"" + LIB_RESOURCE + "\" to locate libraries directory.");
+            for(URL url : urls)
+            {
+                File libs = getRoot(url, LIB_RESOURCE);
+                //If In maven style the libraries folder we need to drop the file name, and version folder
+                if (libs != null && libs.getParentFile().getParentFile().getAbsolutePath().endsWith(LIB_PATH))
+                {
+                    int count = 2 + LIB_PATH.split(Pattern.quote("" + File.separatorChar)).length;
+                    for (int x = 0; x < count; x++)
+                        libs = libs.getParentFile();
+                    return libs;
+                }
+            }
+        }
+        catch (IOException e)
+        {
+            e.printStackTrace();
+        }
+        return null;
+    }
+
+    private File findForgeLocation(ClassLoader loader, File libs)
+    {
+        try
+        {
+            for(URL url : Collections.list(loader.getResources(FORGE_META)))
+            {
+                File base = getRoot(url, FORGE_META);
+                if (base == null)
+                    throw new IllegalStateException("Could not determine root for Forge resource: " + url);
+
+                Path path = base.toPath();
+                if (base.isDirectory())
+                { // Development workspace.
+                    int count = path.getNameCount();
+                    //Eclipse: /bin/{sourceset}/
+                    if (count >= 2 && MAIN_SOURCESET.equals(path.getName(count - 1).toString()) && "bin".equals(path.getName(count - 2).toString()))
+                    {
+                        roots.add(path);
+                        roots.add(path.getParent().resolve("userdev")); //Do I need this?
+                    } //Intellij: /out/production/resources/ & /out/production/classes/
+                    else if (count >= 1 && "resources".equals(path.getName(count - 1).toString()))
+                    {
+                        roots.add(path.getParent().resolve("classes"));
+                        roots.add(path);
+                    } //Gradle: build/resources/{sourceset} & build/classes/{language}/{sourceset}
+                    else if (count >= 2 && MAIN_SOURCESET.equals(path.getName(count - 1).toString()) && "resources".equals(path.getName(count - 2).toString()))
+                    {
+                        Path classes = path.getParent().getParent().resolve("classes");
+                        Files.walk(classes, 2).forEach((p) -> {
+                            roots.add(p);
+                        });
+                        roots.add(path);
+                        roots.add(path.getParent().resolve("userdev"));
+                    }
+                    else
+                    {
+                        LOGGER.warn("Do not know how to process forge path '{}', ignoring.", path);
+                        continue;
+                    }
+                    filterClasses = true;
+                    return base;
+                }
+                else if (base.isFile())
+                {
+                    if (libs == null) //User dev workspace.
+                    {
+                        roots.add(path);
+                    }
+                    else //Standard install
+                    {
+                        String dist = FMLEnvironment.dist == Dist.CLIENT ? "client" : "server";
+                        String version = MCPVersion.getMCVersion() + "-" + ForgeVersion.getVersion();
+                        roots.add(path); // universal
+                        roots.add(libs.toPath().resolve(Paths.get(ForgeVersion.getGroup().replace('.', File.separatorChar), "forge", version, "forge-" + version + "-" + dist + ".jar"))); // Patched classes
+                        roots.add(libs.toPath().resolve(Paths.get("net", "minecraft", dist, MCPVersion.getMCPandMCVersion(), dist + "-" + MCPVersion.getMCPandMCVersion() + "-srg.jar"))); //Vanilla jar in srg names
+                    }
+                    return base;
+                }
+                else
+                    throw new IllegalStateException("Forge path is neither File or Directory... " + base);
+            }
+        }
+        catch (IOException e)
+        {
+            e.printStackTrace();
+        }
+        throw new IllegalStateException("Could not locate \"" + FORGE_META + "\", Forge is corrupt/not on classpath!");
+    }
+
     @Override
     public List<ModFile> scanMods()
     {
         ClassLoader loader = Thread.currentThread().getContextClassLoader();
-        URL url = loader.getResource(FORGE_META);
-        if (url == null)
-            throw new IllegalStateException("Could not locate \"" + FORGE_META + "\", Forge is correupt/not on classpath!");
 
-        File base = getRoot(url, FORGE_META);
-        if (base == null)
-            throw new IllegalStateException("Could not determine root for Forge resource: " + url);
-
-        url = loader.getResource(LIB_RESOURCE);
-        if (url == null)
-            throw new IllegalStateException("Could not locate \"" + LIB_RESOURCE + "\" to locate libraries directory.");
-        File libs = getRoot(url, LIB_RESOURCE);
-        //If In maven style the libraries folder we need to drop the file name, and version folder
-        if (libs != null && libs.getParentFile().getParentFile().getAbsolutePath().endsWith(LIB_PATH))
-        {
-            int count = 2 + LIB_PATH.split(Pattern.quote("" + File.separatorChar)).length;
-            for (int x = 0; x < count; x++)
-                libs = libs.getParentFile();
-        }
-        else
-        {
-            libs = null;
-        }
+        File libs = findLibsLocation(loader);
+        File base = findForgeLocation(loader, libs);
 
         LOGGER.info("Forge Locator: ");
         LOGGER.info("  Forge: " + base);
         LOGGER.info("  Libraries: " + libs);
-
-        Path path = base.toPath();
-        if (base.isDirectory())
-        { // Development workspace.
-            int count = path.getNameCount();
-            //Eclipse: /bin/{sourceset}/
-            if (count >= 2 && MAIN_SOURCESET.equals(path.getName(count - 1).toString()) && "bin".equals(path.getName(count - 2).toString()))
-            {
-                roots.add(path);
-                roots.add(path.getParent().resolve("userdev")); //Do I need this?
-            } //Intellij: /out/production/resources/ & /out/production/classes/
-            else if (count >= 1 && "resources".equals(path.getName(count - 1).toString()))
-            {
-                roots.add(path.getParent().resolve("classes"));
-                roots.add(path);
-            } //Gradle: build/resources/{sourceset} & build/classes/{language}/{sourceset}
-            else if (count >= 2 && MAIN_SOURCESET.equals(path.getName(count - 1).toString()) && "resources".equals(path.getName(count - 2).toString()))
-            {
-                Path classes = path.getParent().getParent().resolve("classes");
-                roots.add(classes.resolve(MAIN_SOURCESET));
-                roots.add(classes.resolve("userdev"));
-                roots.add(path);
-                roots.add(path.getParent().resolve("userdev"));
-            }
-            filterClasses = true;
-        }
-        else if (base.isFile())
-        {
-            if (libs == null) //User dev workspace.
-            {
-                roots.add(path);
-            }
-            else //Standard install
-            {
-                String dist = FMLEnvironment.dist == Dist.CLIENT ? "client" : "server";
-                String version = MCPVersion.getMCVersion() + "-" + ForgeVersion.getVersion();
-                roots.add(path); // universal
-                roots.add(libs.toPath().resolve(Paths.get(ForgeVersion.getGroup().replace('.', File.separatorChar), "forge", version, "forge-" + version + "-" + dist + ".jar"))); // Patched classes
-                roots.add(libs.toPath().resolve(Paths.get("net", "minecraft", dist, MCPVersion.getMCPandMCVersion(), dist + "-" + MCPVersion.getMCPandMCVersion() + "-srg.jar"))); //Vanilla jar in srg names
-            }
-
-        }
-        else
-            throw new IllegalStateException("Forge path is neither File or Directory... " + base);
 
         if (roots.isEmpty())
             return Collections.emptyList();
@@ -188,30 +221,41 @@ public class ForgeLocator implements IModLocator
 
     private Path resolve(Path root, String first, String[] tail)
     {
-        if (Files.isDirectory(root))
+        if (!Files.exists(root))
+        {
+            return null;
+        }
+        else if (Files.isDirectory(root))
         {
             return root.resolve(root.getFileSystem().getPath(first, tail));
         }
         else
         {
-            FileSystem jar = null;
             try
             {
                 URI uri = new URI("jar:" + root.toUri().toString());
-                try
+                try (FileSystem jar = FileSystems.newFileSystem(uri, Collections.emptyMap()))
                 {
-                    jar = FileSystems.getFileSystem(uri);
+                    return jar.getPath(first, tail);
                 }
-                catch (FileSystemNotFoundException e)
+                catch(FileSystemAlreadyExistsException e)
                 {
-                    jar = FileSystems.newFileSystem(uri, Collections.emptyMap());
+                    try
+                    {
+                        FileSystem jar = FileSystems.getFileSystem(uri);
+                        return jar.getPath(first, tail);
+                    }
+                    catch (FileSystemNotFoundException e2)
+                    {
+                        throw new RuntimeException(e);
+                    }
                 }
             }
             catch (URISyntaxException | IOException e)
             {
                 e.printStackTrace();
+                throw new RuntimeException(e);
             }
-            return jar.getPath(first, tail);
         }
     }
 
@@ -230,8 +274,8 @@ public class ForgeLocator implements IModLocator
         String[] tail = Arrays.copyOfRange(path, 1, path.length);
         for (Path root : roots)
         {
-            Path target = resolve(root,path[0], tail);
-            if (Files.exists(target))
+            Path target = resolve(root, path[0], tail);
+            if (target != null && Files.exists(target))
                 return target;
         }
 
