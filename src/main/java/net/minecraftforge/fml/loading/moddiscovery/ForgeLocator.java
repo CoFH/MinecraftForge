@@ -32,6 +32,7 @@ import org.apache.logging.log4j.Logger;
 import java.io.File;
 import java.io.IOException;
 import java.net.URI;
+import java.net.URISyntaxException;
 import java.net.URL;
 import java.nio.file.*;
 import java.util.*;
@@ -193,7 +194,15 @@ public class ForgeLocator implements IModLocator
         }
         else
         {
-            FileSystem jar = FileSystems.getFileSystem(root.toUri());
+            FileSystem jar = null;
+            try
+            {
+                jar = FileSystems.getFileSystem(new URI("jar:" + root.toUri().toString()));
+            }
+            catch (URISyntaxException e)
+            {
+                e.printStackTrace();
+            }
             return jar.getPath(first, tail);
         }
     }
