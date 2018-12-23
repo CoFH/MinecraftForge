@@ -26,6 +26,7 @@ import net.minecraftforge.fml.loading.moddiscovery.ModInfo;
 import java.io.IOException;
 import java.net.URI;
 import java.net.URISyntaxException;
+import java.nio.file.FileSystemAlreadyExistsException;
 import java.nio.file.FileSystems;
 import java.nio.file.Paths;
 import java.util.Arrays;
@@ -36,13 +37,20 @@ import java.util.Objects;
 public class DefaultModInfos
 {
     static {
-        FileConfig minecraftmod;        FileConfig forgemod;
+        FileConfig minecraftmod;
+        FileConfig forgemod;
         try
         {
             final URI jarFileURI = DefaultModInfos.class.getClassLoader().getResource("minecraftmod.toml").toURI();
             if (Objects.equals(jarFileURI.getScheme(), "jar")) {
                 // Initialize the filesystem for the forge jar, because otherwise this barfs?
-                FileSystems.newFileSystem(jarFileURI, new HashMap<>());
+                try {
+                    FileSystems.newFileSystem(jarFileURI, new HashMap<>());
+                }
+                catch(FileSystemAlreadyExistsException e)
+                {
+                    // EAT.
+                }
             }
             minecraftmod = FileConfig.of(Paths.get(jarFileURI));
             minecraftmod.load();
