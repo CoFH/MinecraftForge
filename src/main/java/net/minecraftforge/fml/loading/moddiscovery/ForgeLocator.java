@@ -31,6 +31,7 @@ import org.apache.logging.log4j.Logger;
 
 import java.io.File;
 import java.io.IOException;
+import java.net.URI;
 import java.net.URL;
 import java.nio.file.*;
 import java.util.*;
@@ -184,6 +185,19 @@ public class ForgeLocator implements IModLocator
         return "forge locator";
     }
 
+    private Path resolve(Path root, String first, String[] tail)
+    {
+        if (Files.isDirectory(root))
+        {
+            return root.resolve(root.getFileSystem().getPath(first, tail));
+        }
+        else
+        {
+            FileSystem jar = FileSystems.getFileSystem(root.toUri());
+            return jar.getPath(first, tail);
+        }
+    }
+
     @Override
     public Path findPath(final ModFile modFile, String... path)
     {
@@ -199,12 +213,12 @@ public class ForgeLocator implements IModLocator
         String[] tail = Arrays.copyOfRange(path, 1, path.length);
         for (Path root : roots)
         {
-            Path target = root.resolve(root.getFileSystem().getPath(path[0], tail));
+            Path target = resolve(root,path[0], tail);
             if (Files.exists(target))
                 return target;
         }
 
-        return modFile.getFilePath().resolve(modFile.getFilePath().getFileSystem().getPath(path[0], tail));
+        return resolve(modFile.getFilePath(), path[0], tail);
     }
 
     @Override
