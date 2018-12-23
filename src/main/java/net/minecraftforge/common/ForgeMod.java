@@ -82,6 +82,7 @@ public class ForgeMod implements WorldPersistenceHooks.WorldPersistenceHook
         MinecraftForge.EVENT_BUS.addListener(this::serverStarting);
         MinecraftForge.EVENT_BUS.addListener(this::playerLogin);
         MinecraftForge.EVENT_BUS.addListener(this::serverStopping);
+        ForgeConfig.load();
     }
 
 /*
