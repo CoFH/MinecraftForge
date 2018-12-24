@@ -19,6 +19,7 @@
 
 package net.minecraftforge.fml;
 
+import com.google.common.collect.Lists;
 import net.minecraftforge.fml.loading.FMLLoader;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
@@ -28,6 +29,8 @@ import java.net.URL;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.security.SecureClassLoader;
+import java.util.List;
+import java.util.regex.Pattern;
 
 import static net.minecraftforge.fml.Logging.LOADING;
 
@@ -38,6 +41,10 @@ public class ModLoadingClassLoader extends SecureClassLoader
     static {
         ClassLoader.registerAsParallelCapable();
     }
+
+    List<Pattern> IGNORE_PATTERNS = Lists.newArrayList(
+            Pattern.compile("^net\\.minecraftforge\\.")
+    );
 
     protected ModLoadingClassLoader(final ClassLoader parent) {
         super(parent);
@@ -52,11 +59,14 @@ public class ModLoadingClassLoader extends SecureClassLoader
     @Override
     protected Class<?> loadClass(String name, boolean resolve) throws ClassNotFoundException
     {
-        final String className = name.replace('.', '/').concat(".class");
-        final Path classResource = FMLLoader.getLoadingModList().findResource(className);
-        if (classResource != null)
+        if (IGNORE_PATTERNS.stream().noneMatch(pattern -> pattern.asPredicate().test(name)))
         {
-            return findClass(name);
+            final String className = name.replace('.', '/').concat(".class");
+            final Path classResource = FMLLoader.getLoadingModList().findResource(className);
+            if (classResource != null)
+            {
+                return findClass(name);
+            }
         }
         return super.loadClass(name, resolve);
     }
