@@ -43,7 +43,8 @@ public class ModLoadingClassLoader extends SecureClassLoader
     }
 
     List<Pattern> IGNORE_PATTERNS = Lists.newArrayList(
-            Pattern.compile("^net\\.minecraftforge\\.")
+            Pattern.compile("^java\\."),
+            Pattern.compile("^net\\.minecraftforge\\.fml\\.")
     );
 
     protected ModLoadingClassLoader(final ClassLoader parent) {
