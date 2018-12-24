@@ -223,7 +223,7 @@ public class ForgeLocator implements IModLocator
     {
         if (!Files.exists(root))
         {
-            return null;
+            return root;
         }
         else if (Files.isDirectory(root))
         {

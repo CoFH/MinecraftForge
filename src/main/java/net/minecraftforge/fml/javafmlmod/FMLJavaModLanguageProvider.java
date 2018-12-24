@@ -68,7 +68,10 @@ public class FMLJavaModLanguageProvider implements IModLanguageProvider
             try
             {
                 final Constructor<?> constructor = Class.forName("net.minecraftforge.fml.javafmlmod.FMLModContainer", true, Thread.currentThread().getContextClassLoader()).
-                        getConstructor(IModInfo.class, String.class, ClassLoader.class, ModFileScanData.class);
+                        getConstructor(
+                                Class.forName("net.minecraftforge.fml.language.IModInfo", true, Thread.currentThread().getContextClassLoader()),
+                                String.class, ClassLoader.class,
+                                Class.forName("net.minecraftforge.fml.language.ModFileScanData", true, Thread.currentThread().getContextClassLoader()));
                 return (T)constructor.newInstance(info, className, modClassLoader, modFileScanResults);
             }
             catch (NoSuchMethodException | ClassNotFoundException | InstantiationException | IllegalAccessException | InvocationTargetException e)
