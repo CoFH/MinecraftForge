@@ -19,6 +19,8 @@
 
 package net.minecraftforge.common;
 
+import net.minecraft.item.Item;
+import net.minecraftforge.event.RegistryEvent;
 import net.minecraftforge.eventbus.api.IEventBus;
 import net.minecraftforge.fml.*;
 import net.minecraftforge.fml.config.ModConfig;
@@ -49,7 +51,6 @@ import net.minecraftforge.energy.CapabilityEnergy;
 import net.minecraftforge.fml.event.lifecycle.GatherDataEvent;
 import net.minecraftforge.fluids.capability.CapabilityFluidHandler;
 import net.minecraftforge.items.CapabilityItemHandler;
-import net.minecraftforge.fluids.UniversalBucket;
 import net.minecraftforge.fml.common.Mod;
 import net.minecraftforge.fml.common.gameevent.PlayerEvent;
 import org.apache.logging.log4j.Marker;
@@ -76,8 +77,6 @@ public class ForgeMod implements WorldPersistenceHooks.WorldPersistenceHook
     {
         return INSTANCE;
     }
-
-    public UniversalBucket universalBucket;
 
     public ForgeMod()
     {
@@ -137,20 +136,6 @@ public class ForgeMod implements WorldPersistenceHooks.WorldPersistenceHook
         }
     }
 
-/*
-    public void registrItems(RegistryEvent.Register<Item> event)
-    {
-        // Add and register the forge universal bucket, if it's enabled
-        if(FluidRegistry.isUniversalBucketEnabled())
-        {
-            universalBucket = new UniversalBucket();
-            universalBucket.setUnlocalizedName("forge.bucketFilled");
-            event.getRegistry().register(universalBucket.setRegistryName(ForgeVersion.MOD_ID, "bucket_filled"));
-            MinecraftForge.EVENT_BUS.register(universalBucket);
-        }
-    }
-*/
-
     public void postInit(InterModProcessEvent evt)
     {
         registerAllBiomesAndGenerateEvents();
@@ -175,7 +160,6 @@ public class ForgeMod implements WorldPersistenceHooks.WorldPersistenceHook
 
     public void onAvailable(FMLLoadCompleteEvent evt)
     {
-//        FluidRegistry.validateFluidRegistry();
     }
 
     public void serverStarting(FMLServerStartingEvent evt)
@@ -196,7 +180,6 @@ public class ForgeMod implements WorldPersistenceHooks.WorldPersistenceHook
         DimensionManager.writeRegistry(dims);
         if (!dims.isEmpty())
             forgeData.put("dims", dims);
-        // TODO fluids FluidRegistry.writeDefaultFluidList(forgeData);
         return forgeData;
     }
 
@@ -205,7 +188,6 @@ public class ForgeMod implements WorldPersistenceHooks.WorldPersistenceHook
     {
         if (tag.contains("dims", 10))
             DimensionManager.readRegistry(tag.getCompound("dims"));
-        // TODO fluids FluidRegistry.loadFluidDefaults(tag);
     }
 
     public void mappingChanged(FMLModIdMappingEvent evt)
